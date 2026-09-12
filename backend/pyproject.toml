@@ -1,0 +1,20 @@
+[project]
+name = "triage-coach"
+version = "0.1.0"
+description = "Test-Case Triage Coach backend"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph",
+    "boto3",
+    "pytest",
+    "moto",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
