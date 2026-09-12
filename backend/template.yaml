@@ -1,5 +1,75 @@
-# AWS SAM Template
-# TODO: Defined in Phase 7
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: SAM Template for Test-Case Triage Coach
+Description: Test-Case Triage Coach Serverless Backend
+
+Parameters:
+  ModelId:
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+    Description: Bedrock Model ID for classification and hint generation
+
+Resources:
+  TriageApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  TriageTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+
+  TriageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/triage_coach
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TriageTable
+          MODEL_ID: !Ref ModelId
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TriageTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${ModelId}"
+      Events:
+        TriagePost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TriageApi
+            Path: /triage
+            Method: post
+        TriageOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TriageApi
+            Path: /triage
+            Method: options
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL for Triage service
+    Value: !Sub "https://${TriageApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/triage"
+  TableName:
+    Description: DynamoDB Table Name
+    Value: !Ref TriageTable
+  FunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt TriageFunction.Arn

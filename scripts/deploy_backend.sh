@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
-# TODO: Phase 8 - Deploy backend with SAM
-echo "Backend deployment script placeholder"
+set -e
+
+echo "=== Building Backend with SAM ==="
+sam build -t backend/template.yaml
+
+echo "=== Deploying Backend with SAM (Guided) ==="
+sam deploy --guided --template-file .aws-sam/build/template.yaml

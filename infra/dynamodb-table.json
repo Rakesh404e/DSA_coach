@@ -1,3 +1,16 @@
 {
-  "_comment": "TODO: Phase 7 - DynamoDB table definition"
+  "TableName": "triage-sessions",
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "session_id",
+      "AttributeType": "S"
+    }
+  ],
+  "KeySchema": [
+    {
+      "AttributeName": "session_id",
+      "KeyType": "HASH"
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
 }
