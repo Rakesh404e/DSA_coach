@@ -1,6 +1,6 @@
 """Triage Coach Graph State definition."""
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class TriageState(TypedDict):
@@ -15,3 +15,4 @@ class TriageState(TypedDict):
     attempt_count: int
     hint_text: str | None
     resolved: bool
+    custom_problem: NotRequired[dict | None]

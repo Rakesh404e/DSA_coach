@@ -147,3 +147,94 @@ def test_sample_problems_two_sum_wrong_data_structure_fails():
         TWO_SUM_PROBLEM["test_cases"],
     )
     assert any(not r["passed"] for r in results)
+
+
+def test_sample_problems_valid_parentheses_canonical():
+    from triage_coach.problems.sample_problems import VALID_PARENTHESES_PROBLEM
+    results = run_against_tests(
+        VALID_PARENTHESES_PROBLEM["canonical_solution"],
+        VALID_PARENTHESES_PROBLEM["test_cases"],
+    )
+    assert len(results) == len(VALID_PARENTHESES_PROBLEM["test_cases"])
+    assert all(r["passed"] for r in results)
+
+
+def test_sample_problems_valid_parentheses_bugs_fail():
+    from triage_coach.problems.sample_problems import VALID_PARENTHESES_PROBLEM
+    results_ds = run_against_tests(
+        VALID_PARENTHESES_PROBLEM["buggy_variants"]["wrong_data_structure"],
+        VALID_PARENTHESES_PROBLEM["test_cases"],
+    )
+    assert any(not r["passed"] for r in results_ds)
+
+    results_off = run_against_tests(
+        VALID_PARENTHESES_PROBLEM["buggy_variants"]["off_by_one"],
+        VALID_PARENTHESES_PROBLEM["test_cases"],
+    )
+    assert any(not r["passed"] for r in results_off)
+
+
+def test_sample_problems_longest_substring_canonical():
+    from triage_coach.problems.sample_problems import LONGEST_SUBSTRING_PROBLEM
+    results = run_against_tests(
+        LONGEST_SUBSTRING_PROBLEM["canonical_solution"],
+        LONGEST_SUBSTRING_PROBLEM["test_cases"],
+    )
+    assert len(results) == len(LONGEST_SUBSTRING_PROBLEM["test_cases"])
+    assert all(r["passed"] for r in results)
+
+
+def test_sample_problems_longest_substring_bugs_fail():
+    from triage_coach.problems.sample_problems import LONGEST_SUBSTRING_PROBLEM
+    results_ds = run_against_tests(
+        LONGEST_SUBSTRING_PROBLEM["buggy_variants"]["wrong_data_structure"],
+        LONGEST_SUBSTRING_PROBLEM["test_cases"],
+    )
+    assert any(not r["passed"] for r in results_ds)
+
+    results_off = run_against_tests(
+        LONGEST_SUBSTRING_PROBLEM["buggy_variants"]["off_by_one"],
+        LONGEST_SUBSTRING_PROBLEM["test_cases"],
+    )
+    assert any(not r["passed"] for r in results_off)
+
+
+def test_sample_problems_merge_two_sorted_lists_canonical():
+    from triage_coach.problems.sample_problems import MERGE_TWO_SORTED_LISTS_PROBLEM
+    results = run_against_tests(
+        MERGE_TWO_SORTED_LISTS_PROBLEM["canonical_solution"],
+        MERGE_TWO_SORTED_LISTS_PROBLEM["test_cases"],
+    )
+    assert len(results) == len(MERGE_TWO_SORTED_LISTS_PROBLEM["test_cases"])
+    assert all(r["passed"] for r in results)
+
+
+def test_sample_problems_merge_two_sorted_lists_bugs_fail():
+    from triage_coach.problems.sample_problems import MERGE_TWO_SORTED_LISTS_PROBLEM
+    results_edge = run_against_tests(
+        MERGE_TWO_SORTED_LISTS_PROBLEM["buggy_variants"]["edge_case"],
+        MERGE_TWO_SORTED_LISTS_PROBLEM["test_cases"],
+    )
+    assert any(not r["passed"] for r in results_edge)
+
+    results_off = run_against_tests(
+        MERGE_TWO_SORTED_LISTS_PROBLEM["buggy_variants"]["off_by_one"],
+        MERGE_TWO_SORTED_LISTS_PROBLEM["test_cases"],
+    )
+    assert any(not r["passed"] for r in results_off)
+
+
+def test_custom_problem_dynamic_execution():
+    custom_code = (
+        "def square_all(nums: list[int]) -> list[int]:\n"
+        "    return [x * x for x in nums]\n"
+    )
+    custom_tests = [
+        {"input": ([1, 2, 3],), "expected_output": [1, 4, 9]},
+        {"input": ([],), "expected_output": []},
+        {"input": ([-2, 0, 2],), "expected_output": [4, 0, 4]},
+    ]
+    results = run_against_tests(custom_code, custom_tests)
+    assert len(results) == 3
+    assert all(r["passed"] for r in results)
+

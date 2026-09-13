@@ -1,17 +1,120 @@
 ---
-
+import "../styles/global.css";
+import TriageForm from "../components/TriageForm.astro";
 ---
 
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Test-Case Triage Coach | Progressive Algorithmic Diagnostics</title>
+    <meta
+      name="description"
+      content="An AI-powered coaching system built with LangGraph and Bedrock that diagnoses why code fails test cases and delivers progressive hint tiers without immediately giving away the solution."
+    />
+  </head>
+  <body>
+    <!-- Top Navigation Bar -->
+    <header class="header-nav">
+      <div class="site-container header-content">
+        <a href="/" class="logo-group">
+          <!-- Vercel-style clean geometric delta icon -->
+          <svg class="logo-icon" viewBox="0 0 76 65" fill="var(--color-ink)">
+            <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+          </svg>
+          <span class="logo-text">Triage Coach</span>
+        </a>
+
+        <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+          <span class="badge badge-neutral">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-success);"></span>
+            LangGraph + Bedrock
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="site-container">
+      <!-- Interactive Triage Form Island (Immediate Core Sandbox) -->
+      <TriageForm />
+
+      <!-- Architectural & System Overview (Moved below workbench) -->
+      <section class="hero-section hero-mesh-wrapper">
+        <div class="hero-mesh-bg" aria-hidden="true"></div>
+        <div class="hero-content">
+          <div class="mono-eyebrow" style="margin-bottom: var(--spacing-xs);">
+            System // Automated Algorithmic Triage
+          </div>
+          <h1 class="display-xl">
+            Diagnose failures without spoiling the answer.
+          </h1>
+          <p class="body-lg hero-subtitle">
+            An automated AI coaching sandbox that executes your code against rigorous test cases, classifies bug failure patterns, and delivers progressive hint tiers to help you solve it yourself.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+      <div class="site-container footer-content">
+        <div class="footer-left">
+          <span class="mono-eyebrow">Architecture</span>
+          <p class="body-sm" style="margin-top: 4px;">
+            Serverless LangGraph Workflow · AWS Bedrock (Claude 3 Haiku) · DynamoDB Session Checkpoints
+          </p>
+        </div>
+        <div class="footer-right">
+          <span class="mono-eyebrow">Design Language</span>
+          <p class="body-sm" style="margin-top: 4px;">
+            Vercel Geist System · Hairline Geometry · Progressive Guidance
+          </p>
+        </div>
+      </div>
+    </footer>
+
+    <style>
+      .hero-section {
+        padding: var(--spacing-3xl) 0 var(--spacing-2xl) 0;
+        text-align: center;
+        position: relative;
+        border-top: 1px solid var(--color-hairline);
+        margin-top: var(--spacing-2xl);
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .hero-subtitle {
+        margin-top: var(--spacing-md);
+        color: var(--color-body);
+        max-width: 640px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .site-footer {
+        border-top: 1px solid var(--color-hairline);
+        background-color: var(--color-canvas);
+        padding: var(--spacing-2xl) 0;
+        margin-top: var(--spacing-4xl);
+      }
+
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+      }
+    </style>
+  </body>
 </html>

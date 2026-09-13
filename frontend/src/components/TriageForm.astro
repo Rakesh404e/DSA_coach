@@ -1,0 +1,1285 @@
+---
+import { PROBLEMS } from "../lib/problems";
+---
+
+<div class="triage-workbench" id="triage-workbench">
+  <!-- Top Bar: Problem Selection & Presets -->
+  <div class="hairline-card workbench-toolbar">
+    <div class="toolbar-left">
+      <label for="problem-select" class="mono-eyebrow">Challenge</label>
+      <select id="problem-select" class="form-select problem-dropdown">
+        <optgroup label="Curated High-Signal Archetypes">
+          {Object.values(PROBLEMS).map((p) => (
+            <option value={p.id}>{p.title} ({p.difficulty})</option>
+          ))}
+        </optgroup>
+        <optgroup label="Universal Problem Engine">
+          <option value="custom">✨ Custom / Any Question...</option>
+        </optgroup>
+      </select>
+
+      <span id="active-category-badge" class="badge badge-neutral">
+        Hash Map & Arrays
+      </span>
+      <span id="active-difficulty-badge" class="badge badge-success">
+        Easy
+      </span>
+    </div>
+
+    <div class="toolbar-right">
+      <span class="mono-eyebrow presets-label">Quick Presets</span>
+      <div class="preset-buttons">
+        <button type="button" id="btn-load-starter" class="btn btn-secondary-sm" title="Reset code to problem starter template">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          Starter
+        </button>
+        <button type="button" id="btn-load-buggy" class="btn btn-secondary-sm btn-buggy" title="Load an intentional bug variant to test triage">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Inject Bug
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid: Left = Code Editor & Problem, Right = Triage & Hints -->
+  <div class="workbench-grid">
+    <!-- Left Column: Problem Brief & Code Editor -->
+    <div class="editor-column">
+      <!-- Problem Details Card -->
+      <div class="hairline-card problem-card" id="problem-card">
+        <div class="card-header">
+          <span class="mono-eyebrow">Problem Specification</span>
+          <span id="active-problem-badge" class="badge badge-neutral">Two Sum</span>
+        </div>
+        <p id="problem-prompt" class="body-md problem-prompt-text">
+          {PROBLEMS.two_sum.prompt}
+        </p>
+
+        <!-- Custom Question Creator (Visible only when 'custom' is selected) -->
+        <div id="custom-problem-panel" class="custom-problem-box" style="display: none;">
+          <div class="custom-header">
+            <span class="mono-eyebrow">Universal Question Input</span>
+            <span class="badge badge-blue">Amazon Bedrock Powered</span>
+          </div>
+          <p class="body-xs" style="color: var(--color-body); margin-bottom: 8px;">
+            Paste any algorithm problem prompt below. Bedrock will formulate the starter code stub and synthesize 5–7 comprehensive edge-case test vectors.
+          </p>
+          <div class="custom-chips-row">
+            <span class="mono-eyebrow" style="font-size: 10px; color: var(--color-mute);">Quick Try:</span>
+            <button type="button" class="btn-chip" data-quick="roman">Roman to Integer</button>
+            <button type="button" class="btn-chip" data-quick="overlap">Image Overlap</button>
+            <button type="button" class="btn-chip" data-quick="palindrome">Palindrome Number</button>
+            <button type="button" class="btn-chip" data-quick="rotate">Rotate Array</button>
+            <button type="button" class="btn-chip" data-quick="substring">Longest Substring</button>
+            <button type="button" class="btn-chip-clear" id="btn-clear-custom" title="Clear prompt input">Clear</button>
+          </div>
+          <textarea
+            id="custom-prompt-input"
+            class="form-textarea custom-prompt-textarea"
+            rows="10"
+            placeholder="Paste any LeetCode or DSA problem prompt here... e.g. You are given two images, img1 and img2, represented as binary, square matrices of size n x n..."
+          ></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="btn-synthesize-ai" class="btn btn-secondary-sm">
+                <span id="btn-synth-icon">✨</span>
+                <span id="btn-synth-text">Synthesize Test Suite</span>
+              </button>
+              <span id="synth-status" class="body-xs" style="color: var(--color-mute);"></span>
+            </div>
+            <span class="body-xs" style="color: var(--color-mute); font-size: 11px;">Tip: Or click "Run & Triage" directly to auto-synthesize & test</span>
+          </div>
+
+          <!-- Active Test Vectors Preview & Custom Test Adder -->
+          <div id="test-vectors-bar" class="test-vectors-bar" style="display: none; margin-top: 12px; padding: 10px; background: var(--color-hairline-soft); border-radius: var(--radius-sm); border: 1px solid var(--color-hairline);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="mono-eyebrow" style="font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                🧪 Active Test Suite (<span id="test-count-badge">0</span> Cases)
+              </span>
+              <button type="button" id="btn-toggle-custom-tests" class="btn btn-ghost-sm" style="font-size: 11px; padding: 2px 8px;">
+                + Add Custom Test Case
+              </button>
+            </div>
+            <div id="test-vectors-preview-list" class="test-vectors-preview-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto;"></div>
+
+            <!-- Inline Custom Test Adder -->
+            <div id="custom-test-adder" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-hairline);">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                <input type="text" id="new-test-input" class="form-input" style="flex: 2; font-size: 11px; padding: 4px 8px;" placeholder="Input (e.g. [[[1]], [[1]]] or 'III' or [1, 2])" />
+                <input type="text" id="new-test-expected" class="form-input" style="flex: 1; font-size: 11px; padding: 4px 8px;" placeholder="Expected (e.g. 1)" />
+                <button type="button" id="btn-save-custom-test" class="btn btn-secondary-sm" style="font-size: 11px; padding: 4px 8px;">Save Test</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Code Editor Card -->
+      <div class="hairline-card editor-card">
+        <div class="editor-header">
+          <div class="file-tab">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span class="code-text" id="editor-filename">solution.py</span>
+          </div>
+          <span class="mono-eyebrow" id="editor-status">Python 3.12 (Isolated Sandbox)</span>
+        </div>
+
+        <div class="editor-body">
+          <textarea
+            id="code-editor"
+            class="form-textarea code-area"
+            spellcheck="false"
+            rows="16"
+            placeholder="Write your Python function here..."
+          >{PROBLEMS.two_sum.starterCode}</textarea>
+        </div>
+
+        <div class="editor-actions">
+          <div class="actions-left">
+            <button type="button" id="btn-submit" class="btn btn-primary-pill">
+              <span id="btn-submit-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+              </span>
+              <span id="btn-submit-text">Run & Triage</span>
+            </button>
+
+            <button type="button" id="btn-escalate" class="btn btn-secondary-sm" disabled title="Click if you are still stuck to escalate to the next hint tier">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 15l-6-6-6 6"/>
+              </svg>
+              <span>Still Stuck?</span>
+              <span id="escalate-tier-badge" class="badge badge-warning" style="display: none;">Next: Tier 1</span>
+            </button>
+          </div>
+
+          <div class="actions-right">
+            <button type="button" id="btn-reset-session" class="btn btn-ghost-sm" title="Start a fresh triage session">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path>
+              </svg>
+              Reset Session
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Diagnostics, Progressive Hint & Test Results -->
+    <div class="diagnostic-column">
+      <!-- Session Meta Bar -->
+      <div class="hairline-card session-bar">
+        <div class="session-info-item">
+          <span class="mono-eyebrow">Session ID</span>
+          <span class="code-text session-id-text" id="display-session-id">---</span>
+        </div>
+        <div class="session-info-item">
+          <span class="mono-eyebrow">Attempts</span>
+          <span class="code-text" id="display-attempt-count">0</span>
+        </div>
+        <div class="session-info-item">
+          <span class="mono-eyebrow">Hint Tier</span>
+          <span class="code-text" id="display-hint-tier">None</span>
+        </div>
+      </div>
+
+      <!-- State: Initial Idle -->
+      <div id="state-idle" class="hairline-card result-panel-placeholder">
+        <div class="placeholder-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-mute)" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <h3 class="heading-md">Ready for Automated Triage</h3>
+        <p class="body-sm" style="text-align: center; max-width: 320px; margin-top: 6px;">
+          Submit your solution to execute in the secure Python sandbox. If any test case fails, the AI coach classifies the root cause and delivers progressive, non-spoiler hints.
+        </p>
+      </div>
+
+      <!-- State: Loading Spinner -->
+      <div id="state-loading" class="hairline-card result-panel-placeholder" style="display: none;">
+        <div class="spinner" style="width: 36px; height: 36px; border: 3px solid var(--color-hairline); border-top-color: var(--color-ink); border-radius: 50%;"></div>
+        <h3 class="heading-md" style="margin-top: 16px;">Analyzing Submission</h3>
+        <p class="body-sm" id="loading-subtext">Executing sandbox tests and classifying failure patterns...</p>
+      </div>
+
+      <!-- State: Active Results Panel -->
+      <div id="state-results" class="results-container" style="display: none;">
+        <!-- Verdict Banner -->
+        <div id="verdict-banner" class="hairline-card verdict-card">
+          <div class="verdict-header">
+            <span class="mono-eyebrow">Triage Verdict</span>
+            <span id="failure-type-badge" class="badge">EVALUATING</span>
+          </div>
+          <div class="verdict-summary" id="verdict-summary-text">
+            Diagnosis summary
+          </div>
+        </div>
+
+        <!-- Progressive Hint Card -->
+        <div id="hint-card" class="hairline-card hint-card">
+          <div class="hint-header">
+            <div class="hint-title-group">
+              <span class="mono-eyebrow">Progressive Coach Guidance</span>
+              <span id="hint-tier-tag" class="badge badge-warning">Tier 0: Conceptual Nudge</span>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" id="btn-apply-patch" class="btn btn-secondary-sm" style="display: none; font-size: 11px; padding: 4px 8px; color: var(--color-success);" title="Apply this code patch to the editor">
+                ✨ Apply Solution
+              </button>
+              <button type="button" id="btn-copy-hint" class="btn btn-ghost-sm" title="Copy hint text">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy
+              </button>
+            </div>
+          </div>
+          <div class="hint-content" id="hint-content-body">
+            <!-- Dynamic hint content -->
+          </div>
+        </div>
+
+        <!-- Test Cases Breakdown Card -->
+        <div class="hairline-card test-results-card">
+          <div class="card-header">
+            <span class="mono-eyebrow">Test Execution Matrix</span>
+            <span id="test-pass-ratio" class="badge badge-neutral">0 / 0 Passed</span>
+          </div>
+          <div class="test-cases-list" id="test-cases-list">
+            <!-- Dynamic test result rows -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .triage-workbench {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  /* Toolbar */
+  .workbench-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+  }
+
+  .toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  .problem-dropdown {
+    width: 250px;
+    font-weight: 500;
+  }
+
+  .preset-buttons {
+    display: flex;
+    gap: var(--spacing-xs);
+  }
+
+  .btn-buggy {
+    border-color: rgba(245, 166, 35, 0.4);
+  }
+
+  .btn-buggy:hover {
+    border-color: var(--color-warning);
+    background-color: var(--color-warning-soft);
+  }
+
+  /* Grid Layout */
+  .workbench-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: var(--spacing-lg);
+    align-items: start;
+  }
+
+  @media (max-width: 960px) {
+    .workbench-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .editor-column, .diagnostic-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  /* Problem Card */
+  .problem-card {
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .problem-prompt-text {
+    line-height: 1.6;
+    color: var(--color-ink);
+  }
+
+  .custom-problem-box {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--color-canvas);
+    border: 1px dashed var(--color-hairline);
+    border-radius: var(--radius-sm);
+  }
+
+  .custom-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .custom-chips-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .btn-chip {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background-color: var(--color-hairline-soft);
+    border: 1px solid var(--color-hairline);
+    color: var(--color-ink);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+
+  .btn-chip:hover {
+    background-color: var(--color-ink);
+    color: var(--color-canvas);
+    border-color: var(--color-ink);
+  }
+
+  .btn-chip-clear {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background: transparent;
+    border: 1px dashed var(--color-hairline);
+    color: var(--color-mute);
+    cursor: pointer;
+    margin-left: auto;
+    transition: all 0.15s ease;
+  }
+
+  .btn-chip-clear:hover {
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  .custom-prompt-textarea {
+    min-height: 230px;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: var(--spacing-md);
+    width: 100%;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: var(--font-sans);
+  }
+
+  /* Editor Card */
+  .editor-card {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) var(--spacing-md);
+    background-color: var(--color-hairline-soft);
+    border-bottom: 1px solid var(--color-hairline);
+  }
+
+  .file-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-ink);
+    font-weight: 500;
+  }
+
+  .editor-body {
+    background-color: #ffffff;
+  }
+
+  .code-area {
+    border: none;
+    border-radius: 0;
+    padding: var(--spacing-md);
+    font-size: 13px;
+    line-height: 1.65;
+    background-color: #ffffff;
+    color: #1a1a1a;
+    min-height: 380px;
+    outline: none;
+    tab-size: 4;
+  }
+
+  .code-area:focus {
+    box-shadow: none;
+  }
+
+  .editor-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-canvas);
+    border-top: 1px solid var(--color-hairline);
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .actions-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+
+  /* Session Bar */
+  .session-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
+
+  .session-info-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .session-id-text {
+    font-size: 11px;
+    color: var(--color-mute);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Placeholders */
+  .result-panel-placeholder {
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+  }
+
+  .placeholder-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: var(--color-hairline-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--spacing-md);
+  }
+
+  /* Results Container */
+  .results-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .verdict-card {
+    padding: var(--spacing-md);
+  }
+
+  .verdict-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .verdict-summary {
+    font-size: 13px;
+    color: var(--color-body);
+    line-height: 1.5;
+  }
+
+  /* Hint Card */
+  .hint-card {
+    padding: var(--spacing-md);
+    border-left: 3px solid var(--color-warning);
+  }
+
+  .hint-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .hint-title-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+
+  .hint-content {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--color-ink);
+    white-space: pre-wrap;
+    background-color: var(--color-hairline-soft);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-hairline);
+    font-family: var(--font-sans);
+  }
+
+  /* Test Cases List */
+  .test-results-card {
+    padding: var(--spacing-md);
+  }
+
+  .test-cases-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+  }
+
+  .test-case-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-hairline);
+    background-color: var(--color-canvas);
+    font-size: 12px;
+  }
+
+  .test-case-row.passed {
+    border-left: 3px solid var(--color-success);
+  }
+
+  .test-case-row.failed {
+    border-left: 3px solid var(--color-error);
+    background-color: #fffaf9;
+  }
+
+  .test-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 80%;
+  }
+
+  .test-input {
+    font-family: var(--font-mono);
+    color: var(--color-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .test-expected {
+    font-size: 11px;
+    color: var(--color-mute);
+  }
+</style>
+
+<script>
+  import { PROBLEMS } from "../lib/problems";
+  import { submitTriage, synthesizeProblem, type TriageResponse } from "../lib/api";
+
+  // Client-side Application State
+  let currentSessionId = crypto.randomUUID();
+  let currentProblemId = "two_sum";
+  let currentHintTier = 0;
+  let attemptCount = 0;
+  let lastResponse: TriageResponse | null = null;
+  let isSubmitting = false;
+  let customProblemData: any = null;
+
+  // DOM Elements
+  const problemSelect = document.getElementById("problem-select") as HTMLSelectElement;
+  const problemPrompt = document.getElementById("problem-prompt") as HTMLElement;
+  const activeProblemBadge = document.getElementById("active-problem-badge") as HTMLElement;
+  const activeCategoryBadge = document.getElementById("active-category-badge") as HTMLElement;
+  const activeDifficultyBadge = document.getElementById("active-difficulty-badge") as HTMLElement;
+  const customProblemPanel = document.getElementById("custom-problem-panel") as HTMLElement;
+  const customPromptInput = document.getElementById("custom-prompt-input") as HTMLTextAreaElement;
+  const btnSynthesizeAi = document.getElementById("btn-synthesize-ai") as HTMLButtonElement;
+  const btnSynthText = document.getElementById("btn-synth-text") as HTMLElement;
+  const synthStatus = document.getElementById("synth-status") as HTMLElement;
+
+  const codeEditor = document.getElementById("code-editor") as HTMLTextAreaElement;
+  const btnLoadStarter = document.getElementById("btn-load-starter") as HTMLButtonElement;
+  const btnLoadBuggy = document.getElementById("btn-load-buggy") as HTMLButtonElement;
+  const btnSubmit = document.getElementById("btn-submit") as HTMLButtonElement;
+  const btnSubmitText = document.getElementById("btn-submit-text") as HTMLElement;
+  const btnSubmitIcon = document.getElementById("btn-submit-icon") as HTMLElement;
+  const btnEscalate = document.getElementById("btn-escalate") as HTMLButtonElement;
+  const escalateTierBadge = document.getElementById("escalate-tier-badge") as HTMLElement;
+  const btnResetSession = document.getElementById("btn-reset-session") as HTMLButtonElement;
+  const btnCopyHint = document.getElementById("btn-copy-hint") as HTMLButtonElement;
+  const btnApplyPatch = document.getElementById("btn-apply-patch") as HTMLButtonElement;
+  const btnClearCustom = document.getElementById("btn-clear-custom") as HTMLButtonElement;
+
+  // Display elements
+  const displaySessionId = document.getElementById("display-session-id") as HTMLElement;
+  const displayAttemptCount = document.getElementById("display-attempt-count") as HTMLElement;
+  const displayHintTier = document.getElementById("display-hint-tier") as HTMLElement;
+
+  // State containers
+  const stateIdle = document.getElementById("state-idle") as HTMLElement;
+  const stateLoading = document.getElementById("state-loading") as HTMLElement;
+  const stateResults = document.getElementById("state-results") as HTMLElement;
+  const loadingSubtext = document.getElementById("loading-subtext") as HTMLElement;
+
+  // Result details
+  const failureTypeBadge = document.getElementById("failure-type-badge") as HTMLElement;
+  const verdictSummaryText = document.getElementById("verdict-summary-text") as HTMLElement;
+  const hintCard = document.getElementById("hint-card") as HTMLElement;
+  const hintTierTag = document.getElementById("hint-tier-tag") as HTMLElement;
+  const hintContentBody = document.getElementById("hint-content-body") as HTMLElement;
+  const testPassRatio = document.getElementById("test-pass-ratio") as HTMLElement;
+  const testCasesList = document.getElementById("test-cases-list") as HTMLElement;
+
+  // Active Test Vectors Preview & Editor bindings
+  const testVectorsBar = document.getElementById("test-vectors-bar") as HTMLElement;
+  const testCountBadge = document.getElementById("test-count-badge") as HTMLElement;
+  const testVectorsPreviewList = document.getElementById("test-vectors-preview-list") as HTMLElement;
+  const btnToggleCustomTests = document.getElementById("btn-toggle-custom-tests") as HTMLButtonElement;
+  const customTestAdder = document.getElementById("custom-test-adder") as HTMLElement;
+  const newTestInput = document.getElementById("new-test-input") as HTMLInputElement;
+  const newTestExpected = document.getElementById("new-test-expected") as HTMLInputElement;
+  const btnSaveCustomTest = document.getElementById("btn-save-custom-test") as HTMLButtonElement;
+
+  function renderTestVectorsPreview(problemData: any) {
+    if (!testVectorsBar) return;
+    if (!problemData || !problemData.test_cases || problemData.test_cases.length === 0) {
+      testVectorsBar.style.display = "none";
+      return;
+    }
+    testVectorsBar.style.display = "block";
+    testCountBadge.textContent = String(problemData.test_cases.length);
+    testVectorsPreviewList.innerHTML = "";
+    problemData.test_cases.forEach((tc: any, i: number) => {
+      const row = document.createElement("div");
+      row.style.cssText =
+        "display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 3px 6px; background: var(--color-canvas); border-radius: 4px; border: 1px solid var(--color-hairline);";
+      row.innerHTML = `
+        <span style="font-family: var(--font-mono); color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 68%;">
+          #${i + 1}: ${JSON.stringify(tc.input)}
+        </span>
+        <span style="color: var(--color-mute); font-size: 11px; white-space: nowrap;">
+          Expected: <strong style="color: var(--color-ink); font-family: var(--font-mono);">${JSON.stringify(tc.expected_output)}</strong>
+        </span>
+      `;
+      testVectorsPreviewList.appendChild(row);
+    });
+  }
+
+  if (btnToggleCustomTests) {
+    btnToggleCustomTests.addEventListener("click", () => {
+      if (customTestAdder.style.display === "none") {
+        customTestAdder.style.display = "block";
+        newTestInput.focus();
+      } else {
+        customTestAdder.style.display = "none";
+      }
+    });
+  }
+
+  if (btnSaveCustomTest) {
+    btnSaveCustomTest.addEventListener("click", () => {
+      const rawIn = newTestInput.value.trim();
+      const rawExp = newTestExpected.value.trim();
+      if (!rawIn || !rawExp) return;
+
+      let parsedIn: any = rawIn;
+      let parsedExp: any = rawExp;
+      try { parsedIn = JSON.parse(rawIn.replace(/'/g, '"')); } catch {}
+      try { parsedExp = JSON.parse(rawExp.replace(/'/g, '"')); } catch {}
+
+      if (!customProblemData) {
+        customProblemData = {
+          problem_id: "custom",
+          title: "Custom Problem",
+          prompt: customPromptInput.value.trim() || "Custom challenge",
+          entrypoint: "solution",
+          starter_code: codeEditor.value,
+          test_cases: [],
+        };
+      }
+      if (!customProblemData.test_cases) customProblemData.test_cases = [];
+      customProblemData.test_cases.push({ input: parsedIn, expected_output: parsedExp });
+      renderTestVectorsPreview(customProblemData);
+      newTestInput.value = "";
+      newTestExpected.value = "";
+      customTestAdder.style.display = "none";
+    });
+  }
+
+  // Quick Preset Sample Prompts for Instant Testing
+  const SAMPLE_PROMPTS: Record<string, string> = {
+    overlap: `You are given two images, img1 and img2, represented as binary, square matrices of size n x n. A binary matrix has only 0s and 1s as values. We translate one image however we choose by sliding all the 1 bits left, right, up, and/or down any number of units. We then place it on top of the other image. We can then calculate the overlap by counting the number of positions that have a 1 in both images. Note also that a translation does not include any kind of rotation. Any 1 bits that are translated outside of the matrix borders are erased. Return the largest possible overlap.
+
+Example 1:
+Input: img1 = [[1,1,0],[0,1,0],[0,1,0]], img2 = [[0,0,0],[0,1,1],[0,0,1]]
+Output: 3
+
+Example 2:
+Input: img1 = [[1]], img2 = [[1]]
+Output: 1
+
+Example 3:
+Input: img1 = [[0]], img2 = [[0]]
+Output: 0`,
+
+    roman: `Roman numerals are represented by seven different symbols: I, V, X, L, C, D and M.
+Symbol       Value
+I             1
+V             5
+X             10
+L             50
+C             100
+D             500
+M             1000
+
+For example, 2 is written as II in Roman numeral, just two ones added together. 12 is written as XII, which is simply X + II. The number 27 is written as XXVII, which is XX + V + II.
+Roman numerals are usually written largest to smallest from left to right. However, the numeral for four is not IIII. Instead, the number four is written as IV. Because the one is before the five we subtract it making four. The same principle applies to the number nine, which is written as IX. There are six instances where subtraction is used:
+- I can be placed before V (5) and X (10) to make 4 and 9. 
+- X can be placed before L (50) and C (100) to make 40 and 90. 
+- C can be placed before D (500) and M (1000) to make 400 and 900.
+
+Given a roman numeral, convert it to an integer.
+
+Example 1:
+Input: s = "III"
+Output: 3
+
+Example 2:
+Input: s = "LVIII"
+Output: 58
+
+Example 3:
+Input: s = "MCMXCIV"
+Output: 1994`,
+
+    palindrome: `Given an integer x, return true if x is a palindrome, and false otherwise.
+
+Example 1:
+Input: x = 121
+Output: true
+
+Example 2:
+Input: x = -121
+Output: false
+
+Example 3:
+Input: x = 10
+Output: false`,
+
+    rotate: `Given an integer array nums, rotate the array to the right by k steps, where k is non-negative.
+
+Example 1:
+Input: nums = [1,2,3,4,5,6,7], k = 3
+Output: [5,6,7,1,2,3,4]
+
+Example 2:
+Input: nums = [-1,-100,3,99], k = 2
+Output: [3,99,-1,-100]`,
+
+    substring: `Given a string s, find the length of the longest substring without repeating characters.
+
+Example 1:
+Input: s = "abcabcbb"
+Output: 3
+
+Example 2:
+Input: s = "bbbbb"
+Output: 1
+
+Example 3:
+Input: s = "pwwkew"
+Output: 3`,
+  };
+
+  // Initialize display
+  displaySessionId.textContent = currentSessionId.slice(0, 8) + "...";
+  displaySessionId.title = currentSessionId;
+
+  // Tab key indentation support in code editor
+  codeEditor.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = codeEditor.selectionStart;
+      const end = codeEditor.selectionEnd;
+      codeEditor.value = codeEditor.value.substring(0, start) + "    " + codeEditor.value.substring(end);
+      codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+    }
+  });
+
+  // Track code editor changes to encourage re-running triage without page reload
+  codeEditor.addEventListener("input", () => {
+    if (lastResponse && stateResults.style.display === "flex") {
+      btnSubmitText.textContent = "Re-run Triage";
+    }
+  });
+
+  // Reactive listener on custom prompt input: clears old results and marks prompt as fresh
+  customPromptInput.addEventListener("input", () => {
+    const text = customPromptInput.value.trim();
+    if (customProblemData && customProblemData.rawText !== text) {
+      customProblemData = null;
+      synthStatus.textContent = "Prompt edited. Click 'Run & Triage' or 'Synthesize'.";
+      synthStatus.style.color = "var(--color-mute)";
+      // Reset stale results panel to idle so outdated failure boxes disappear
+      if (stateResults.style.display === "flex") {
+        stateIdle.style.display = "flex";
+        stateResults.style.display = "none";
+      }
+    }
+  });
+
+  // Quick preset chips for instant challenge loading
+  document.querySelectorAll(".btn-chip").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const target = e.currentTarget as HTMLElement;
+      const key = target.dataset.quick;
+      if (key && SAMPLE_PROMPTS[key]) {
+        customPromptInput.value = SAMPLE_PROMPTS[key];
+        synthStatus.textContent = "Synthesizing test suite...";
+        synthStatus.style.color = "var(--color-mute)";
+        try {
+          const synthesized = await synthesizeProblem(SAMPLE_PROMPTS[key]);
+          synthesized.rawText = SAMPLE_PROMPTS[key];
+          customProblemData = synthesized;
+          codeEditor.value = synthesized.starter_code;
+          problemPrompt.textContent = synthesized.prompt;
+          activeProblemBadge.textContent = synthesized.title;
+          synthStatus.textContent = `Ready! (${synthesized.test_cases?.length || 0} unit tests)`;
+          synthStatus.style.color = "var(--color-success)";
+
+          renderTestVectorsPreview(synthesized);
+
+          // Clean state
+          stateIdle.style.display = "flex";
+          stateResults.style.display = "none";
+          stateLoading.style.display = "none";
+          lastResponse = null;
+          btnSubmitText.textContent = "Run & Triage";
+        } catch (err: any) {
+          synthStatus.textContent = `Error: ${err.message || err}`;
+          synthStatus.style.color = "var(--color-error)";
+        }
+      }
+    });
+  });
+
+  if (btnClearCustom) {
+    btnClearCustom.addEventListener("click", () => {
+      customPromptInput.value = "";
+      customProblemData = null;
+      renderTestVectorsPreview(null);
+      codeEditor.value = "def solution(data):\n    # Write your solution here\n    pass\n";
+      problemPrompt.textContent = "Define or synthesize any DSA challenge using Amazon Bedrock.";
+      activeProblemBadge.textContent = "Custom Problem";
+      synthStatus.textContent = "Cleared. Paste your challenge prompt above.";
+      synthStatus.style.color = "var(--color-mute)";
+      stateIdle.style.display = "flex";
+      stateResults.style.display = "none";
+      stateLoading.style.display = "none";
+      lastResponse = null;
+    });
+  }
+
+  function updateProblemView(problemId: string) {
+    currentProblemId = problemId;
+
+    if (problemId === "custom") {
+      activeProblemBadge.textContent = customProblemData?.title || "Custom Problem";
+      activeCategoryBadge.textContent = "Universal Mode";
+      activeDifficultyBadge.textContent = "Dynamic";
+      activeDifficultyBadge.className = "badge badge-blue";
+      problemPrompt.style.display = "none";
+      customProblemPanel.style.display = "block";
+      btnLoadBuggy.style.display = "none";
+      renderTestVectorsPreview(customProblemData);
+      if (!customProblemData) {
+        codeEditor.value = "def solution(data):\n    # Write your solution here\n    pass\n";
+      } else {
+        codeEditor.value = customProblemData.starter_code;
+      }
+    } else {
+      problemPrompt.style.display = "block";
+      customProblemPanel.style.display = "none";
+      btnLoadBuggy.style.display = "inline-flex";
+      renderTestVectorsPreview(null);
+
+      const problem = PROBLEMS[problemId];
+      if (!problem) return;
+
+      problemPrompt.textContent = problem.prompt;
+      activeProblemBadge.textContent = problem.title;
+      activeCategoryBadge.textContent = problem.category;
+      activeDifficultyBadge.textContent = problem.difficulty;
+      activeDifficultyBadge.className =
+        problem.difficulty === "Easy" ? "badge badge-success" : "badge badge-warning";
+      codeEditor.value = problem.starterCode;
+    }
+
+    // Reset results on problem switch
+    stateIdle.style.display = "flex";
+    stateLoading.style.display = "none";
+    stateResults.style.display = "none";
+    btnEscalate.disabled = true;
+    escalateTierBadge.style.display = "none";
+    currentHintTier = 0;
+    attemptCount = 0;
+    lastResponse = null;
+    btnSubmitText.textContent = "Run & Triage";
+    displayAttemptCount.textContent = "0";
+    displayHintTier.textContent = "None";
+  }
+
+  problemSelect.addEventListener("change", (e) => {
+    const target = e.target as HTMLSelectElement;
+    updateProblemView(target.value);
+  });
+
+  btnLoadStarter.addEventListener("click", () => {
+    if (currentProblemId === "custom") {
+      codeEditor.value = customProblemData?.starter_code || "def solution(data):\n    # Write your solution here\n    pass\n";
+    } else {
+      const problem = PROBLEMS[currentProblemId];
+      if (problem) {
+        codeEditor.value = problem.starterCode;
+      }
+    }
+    codeEditor.focus();
+  });
+
+  btnLoadBuggy.addEventListener("click", () => {
+    const problem = PROBLEMS[currentProblemId];
+    if (problem && problem.buggyVariants.length > 0) {
+      codeEditor.value = problem.buggyVariants[0].code;
+      codeEditor.focus();
+    }
+  });
+
+  // AI synthesis handler
+  btnSynthesizeAi.addEventListener("click", async () => {
+    const text = customPromptInput.value.trim();
+    if (!text) {
+      synthStatus.textContent = "Please enter a problem prompt description first.";
+      synthStatus.style.color = "var(--color-error)";
+      return;
+    }
+
+    btnSynthesizeAi.disabled = true;
+    btnSynthText.textContent = "Synthesizing...";
+    synthStatus.textContent = "Building test suite and starter stub...";
+    synthStatus.style.color = "var(--color-mute)";
+
+    try {
+      const synthesized = await synthesizeProblem(text);
+      synthesized.rawText = text;
+      customProblemData = synthesized;
+      codeEditor.value = synthesized.starter_code;
+      problemPrompt.textContent = synthesized.prompt;
+      activeProblemBadge.textContent = synthesized.title;
+      synthStatus.textContent = `Generated ${synthesized.test_cases?.length || 0} unit tests successfully!`;
+      synthStatus.style.color = "var(--color-success)";
+
+      renderTestVectorsPreview(synthesized);
+
+      // Reset stale results so user sees clear state
+      stateIdle.style.display = "flex";
+      stateLoading.style.display = "none";
+      stateResults.style.display = "none";
+      lastResponse = null;
+      btnSubmitText.textContent = "Run & Triage";
+    } catch (err: any) {
+      synthStatus.textContent = `Failed: ${err.message || err}`;
+      synthStatus.style.color = "var(--color-error)";
+    } finally {
+      btnSynthesizeAi.disabled = false;
+      btnSynthText.textContent = "Synthesize Test Suite";
+    }
+  });
+
+  btnResetSession.addEventListener("click", () => {
+    currentSessionId = crypto.randomUUID();
+    currentHintTier = 0;
+    attemptCount = 0;
+    lastResponse = null;
+    displaySessionId.textContent = currentSessionId.slice(0, 8) + "...";
+    displaySessionId.title = currentSessionId;
+    displayAttemptCount.textContent = "0";
+    displayHintTier.textContent = "None";
+    btnEscalate.disabled = true;
+    escalateTierBadge.style.display = "none";
+    btnSubmitText.textContent = "Run & Triage";
+
+    stateIdle.style.display = "flex";
+    stateLoading.style.display = "none";
+    stateResults.style.display = "none";
+
+    // Reload starter code
+    if (currentProblemId === "custom") {
+      codeEditor.value = customProblemData?.starter_code || "def solution(data):\n    # Write your solution here\n    pass\n";
+    } else {
+      const problem = PROBLEMS[currentProblemId];
+      if (problem) codeEditor.value = problem.starterCode;
+    }
+  });
+
+  btnCopyHint.addEventListener("click", () => {
+    if (lastResponse && lastResponse.hint_text) {
+      navigator.clipboard.writeText(lastResponse.hint_text).then(() => {
+        btnCopyHint.textContent = "Copied!";
+        setTimeout(() => {
+          btnCopyHint.innerHTML = `
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+          `;
+        }, 1500);
+      });
+    }
+  });
+
+  if (btnApplyPatch) {
+    btnApplyPatch.addEventListener("click", () => {
+      if (lastResponse && lastResponse.hint_text) {
+        // Extract python code block from markdown
+        const match = lastResponse.hint_text.match(/```python\s*([\s\S]*?)```/);
+        if (match && match[1]) {
+          codeEditor.value = match[1].trim() + "\n";
+          codeEditor.focus();
+          btnApplyPatch.textContent = "Applied!";
+          btnSubmitText.textContent = "Run & Triage (Verify Patch)";
+          setTimeout(() => {
+            btnApplyPatch.textContent = "✨ Apply Solution";
+          }, 2000);
+        }
+      }
+    });
+  }
+
+  async function handleTriageRequest(isEscalation = false) {
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    // UI Loading state
+    btnSubmit.disabled = true;
+    btnEscalate.disabled = true;
+    btnSubmitIcon.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; display: inline-block;"></span>`;
+    btnSubmitText.textContent = isEscalation ? "Escalating..." : "Evaluating...";
+
+    stateIdle.style.display = "none";
+    stateResults.style.display = "none";
+    stateLoading.style.display = "flex";
+    loadingSubtext.textContent = isEscalation
+      ? `Requesting Tier ${currentHintTier + 1} escalation from coach...`
+      : "Running sandboxed test cases and classifying failure type...";
+
+    try {
+      // Auto-synthesize custom problem if user hasn't clicked "Synthesize" explicitly!
+      if (currentProblemId === "custom") {
+        const promptText = customPromptInput.value.trim();
+        if (promptText && (!customProblemData || customProblemData.rawText !== promptText)) {
+          loadingSubtext.textContent = "Synthesizing test suite and entrypoint from prompt...";
+          const synthesized = await synthesizeProblem(promptText);
+          synthesized.rawText = promptText;
+          customProblemData = synthesized;
+          problemPrompt.textContent = synthesized.prompt;
+          activeProblemBadge.textContent = synthesized.title;
+
+          // If code editor is empty or still has generic placeholder, populate starter code
+          const currentCode = codeEditor.value.trim();
+          if (!currentCode || currentCode.includes("def solution(data):\n    # Write your solution here\n    pass")) {
+            codeEditor.value = synthesized.starter_code;
+          }
+
+          renderTestVectorsPreview(customProblemData);
+        }
+      }
+
+      const payload: any = {
+        session_id: currentSessionId,
+        problem_id: currentProblemId,
+        code: codeEditor.value,
+        user_still_stuck: isEscalation,
+      };
+
+      if (currentProblemId === "custom" && customProblemData) {
+        payload.custom_problem = customProblemData;
+      }
+
+      const response = await submitTriage(payload);
+      lastResponse = response;
+      renderResults(response);
+    } catch (err: any) {
+      stateLoading.style.display = "none";
+      stateResults.style.display = "flex";
+      verdictSummaryText.innerHTML = `<span style="color: var(--color-error-deep);">Error during triage: ${err.message || err}</span>`;
+      failureTypeBadge.className = "badge badge-error";
+      failureTypeBadge.textContent = "EXECUTION / API ERROR";
+      hintCard.style.display = "none";
+    } finally {
+      isSubmitting = false;
+      btnSubmit.disabled = false;
+      btnSubmitIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+      btnSubmitText.textContent = "Run & Triage";
+    }
+  }
+
+  function renderResults(res: TriageResponse) {
+    stateLoading.style.display = "none";
+    stateResults.style.display = "flex";
+
+    // Update meta
+    attemptCount = res.attempt_count;
+    currentHintTier = res.hint_tier;
+    displayAttemptCount.textContent = String(res.attempt_count);
+    displayHintTier.textContent = res.resolved ? "Resolved" : `Tier ${res.hint_tier}`;
+
+    // Verdict Card & Badge
+    if (res.resolved) {
+      failureTypeBadge.className = "badge badge-success";
+      failureTypeBadge.textContent = "ALL TESTS PASSED";
+      verdictSummaryText.innerHTML = `<strong>Congratulations!</strong> Your solution passed all sandboxed test cases.`;
+      hintCard.style.display = "none";
+      btnEscalate.disabled = true;
+      escalateTierBadge.style.display = "none";
+    } else {
+      const failureLabel = (res.failure_type || "failure").toUpperCase().replace(/_/g, " ");
+      failureTypeBadge.className = "badge badge-error";
+      failureTypeBadge.textContent = failureLabel;
+      verdictSummaryText.textContent = `Diagnosis classified the issue as ${failureLabel.toLowerCase()}. A progressive hint has been formulated below.`;
+
+      // Hint Card
+      hintCard.style.display = "block";
+      const tierLabels = [
+        "Tier 0: Conceptual Nudge",
+        "Tier 1: Targeted Pointer",
+        "Tier 2: Code Patch Solution",
+      ];
+      hintTierTag.textContent = tierLabels[res.hint_tier] || `Tier ${res.hint_tier}`;
+
+      // Color code tier
+      if (res.hint_tier === 2) {
+        hintTierTag.className = "badge badge-error";
+      } else if (res.hint_tier === 1) {
+        hintTierTag.className = "badge badge-warning";
+      } else {
+        hintTierTag.className = "badge badge-blue";
+      }
+
+      hintContentBody.textContent = res.hint_text || "No hint text provided.";
+
+      // Check if a code patch is available in Tier 2 to show "Apply Solution"
+      if (btnApplyPatch) {
+        if (res.hint_tier === 2 && res.hint_text && res.hint_text.includes("```python")) {
+          btnApplyPatch.style.display = "inline-flex";
+        } else {
+          btnApplyPatch.style.display = "none";
+        }
+      }
+
+      // Escalation button state
+      if (res.hint_tier < 2) {
+        btnEscalate.disabled = false;
+        escalateTierBadge.style.display = "inline-flex";
+        escalateTierBadge.textContent = `Next: Tier ${res.hint_tier + 1}`;
+      } else {
+        btnEscalate.disabled = true;
+        escalateTierBadge.style.display = "inline-flex";
+        escalateTierBadge.textContent = "Max Tier Reached";
+        escalateTierBadge.className = "badge badge-neutral";
+      }
+    }
+
+    // Render Test Results List
+    const passedCount = res.test_results.filter((t) => t.passed).length;
+    const totalCount = res.test_results.length;
+    testPassRatio.textContent = `${passedCount} / ${totalCount} Passed`;
+    testPassRatio.className = passedCount === totalCount ? "badge badge-success" : "badge badge-warning";
+
+    testCasesList.innerHTML = "";
+    res.test_results.forEach((tr, idx) => {
+      const row = document.createElement("div");
+      row.className = `test-case-row ${tr.passed ? "passed" : "failed"}`;
+
+      const inputStr = JSON.stringify(tr.test_case.input);
+      const expectedStr = JSON.stringify(tr.test_case.expected_output);
+      const actualStr = tr.error ? `Error: ${tr.error}` : JSON.stringify(tr.actual_output);
+
+      row.innerHTML = `
+        <div class="test-info">
+          <div class="test-input">Test #${idx + 1}: ${inputStr}</div>
+          <div class="test-expected">Expected: ${expectedStr} | Actual: ${actualStr}</div>
+        </div>
+        <div>
+          <span class="badge ${tr.passed ? "badge-success" : "badge-error"}">
+            ${tr.passed ? "PASSED" : "FAILED"}
+          </span>
+        </div>
+      `;
+      testCasesList.appendChild(row);
+    });
+  }
+
+  btnSubmit.addEventListener("click", () => handleTriageRequest(false));
+  btnEscalate.addEventListener("click", () => handleTriageRequest(true));
+</script>

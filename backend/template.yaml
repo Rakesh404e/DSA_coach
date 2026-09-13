@@ -32,8 +32,8 @@ Resources:
   TriageFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/triage_coach
-      Handler: handler.lambda_handler
+      CodeUri: src
+      Handler: triage_coach.handler.lambda_handler
       Runtime: python3.12
       Timeout: 30
       MemorySize: 512

@@ -14,6 +14,7 @@ from langgraph.types import Command
 
 from triage_coach.clients import dynamo_client
 from triage_coach.graph.build_graph import graph
+from triage_coach.graph.nodes import synthesize_problem_from_prompt
 
 
 def _response(status_code: int, body: Any) -> dict[str, Any]:
@@ -47,9 +48,19 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
     else:
         payload = {}
 
+    # Check for problem synthesis action
+    action = payload.get("action")
+    if action == "synthesize_problem":
+        prompt_text = payload.get("prompt", "")
+        if not prompt_text:
+            return _response(400, {"error": "Missing 'prompt' for problem synthesis"})
+        synthesized = synthesize_problem_from_prompt(prompt_text)
+        return _response(200, synthesized)
+
     session_id = payload.get("session_id")
     code = payload.get("code", "")
     problem_id = payload.get("problem_id", "")
+    custom_problem = payload.get("custom_problem")
     user_still_stuck = bool(payload.get("user_still_stuck", False))
 
     if not session_id:
@@ -74,6 +85,9 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
             session_state["code"] = code
         if problem_id:
             session_state["problem_id"] = problem_id
+
+    if custom_problem:
+        session_state["custom_problem"] = custom_problem
 
     # Run compiled graph starting from appropriate entrypoint
     try:

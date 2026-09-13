@@ -1,5 +1,6 @@
 """Graph node functions for test evaluation, failure classification, and hint generation."""
 
+import json
 from typing import Any
 
 from triage_coach.clients import bedrock_client
@@ -9,24 +10,42 @@ from triage_coach.problems.sample_problems import PROBLEMS
 
 
 def run_tests_node(state: TriageState) -> dict[str, Any]:
-    """Execute code against problem test cases in sandbox and record results."""
+    """Execute code against problem test cases in sandbox and record results.
+
+    Supports both canned problems in PROBLEMS and dynamic custom problems.
+    """
     problem_id = state.get("problem_id", "")
     code = state.get("code", "")
+    custom_problem = state.get("custom_problem")
 
-    problem = PROBLEMS.get(problem_id)
-    if not problem:
-        return {
-            "test_results": [{
-                "test_case": {},
-                "passed": False,
-                "actual_output": None,
-                "error": f"Unknown problem_id: {problem_id}",
-            }],
-            "resolved": False,
-        }
+    if custom_problem and (problem_id == "custom" or not problem_id):
+        test_cases = custom_problem.get("test_cases", [])
+        entrypoint = custom_problem.get("entrypoint")
+        if not test_cases:
+            return {
+                "test_results": [{
+                    "test_case": {},
+                    "passed": False,
+                    "actual_output": None,
+                    "error": "No test cases provided for custom problem.",
+                }],
+                "resolved": False,
+            }
+    else:
+        problem = PROBLEMS.get(problem_id)
+        if not problem:
+            return {
+                "test_results": [{
+                    "test_case": {},
+                    "passed": False,
+                    "actual_output": None,
+                    "error": f"Unknown problem_id: {problem_id}",
+                }],
+                "resolved": False,
+            }
 
-    test_cases = problem.get("test_cases", [])
-    entrypoint = problem.get("entrypoint")
+        test_cases = problem.get("test_cases", [])
+        entrypoint = problem.get("entrypoint")
 
     test_results = run_against_tests(code, test_cases, entrypoint=entrypoint)
     resolved = bool(test_results and all(r.get("passed", False) for r in test_results))
@@ -80,8 +99,12 @@ def classify_failure_node(
                 f"actual={r.get('actual_output')}, error={r.get('error')}"
             )
 
+    problem_name = state.get("problem_id", "")
+    if problem_name == "custom" and state.get("custom_problem"):
+        problem_name = state.get("custom_problem", {}).get("prompt", "custom problem")
+
     prompt = (
-        f"Problem: {state.get('problem_id')}\n"
+        f"Problem: {problem_name}\n"
         f"Submitted Code:\n{state.get('code')}\n\n"
         f"Failing Test Results:\n" + "\n".join(failing_summary) + "\n\n"
         "Classify the failure root cause into exactly one of these categories:\n"
@@ -126,7 +149,7 @@ def _canned_fallback_hint(problem_id: str, failure_type: str | None, tier: int) 
         if failure_type == "off_by_one":
             return "Check your loop condition (`<` vs `<=`) or pointer steps (`+ 1` / `- 1`). You may be skipping the final valid element."
         elif failure_type == "wrong_data_structure":
-            return "A `set` only tracks unique values and cannot retrieve indices or handle duplicate pairs. Consider using a `dict` (hash map) instead."
+            return "Consider if a hash map (dictionary) or stack better suits the ordering or lookup guarantees needed instead of a simple set or counter."
         elif failure_type == "edge_case":
             return "Verify how the code handles boundary cases, like target values at the extreme ends or empty lists."
         return "Trace the failing test case line by line to see where the actual value deviates from expected."
@@ -134,9 +157,14 @@ def _canned_fallback_hint(problem_id: str, failure_type: str | None, tier: int) 
     # Tier 2 - Full patch
     problem = PROBLEMS.get(problem_id)
     canonical = problem.get("canonical_solution") if problem else ""
+    if canonical:
+        return (
+            f"Here is the corrected solution with explanation:\n\n"
+            f"```python\n{canonical}\n```"
+        )
     return (
-        f"Here is the corrected solution with explanation:\n\n"
-        f"```python\n{canonical}\n```"
+        "Here is the corrected logic pattern:\n\n"
+        "Carefully review the algorithm requirements and verify all invariants and corner cases."
     )
 
 
@@ -167,8 +195,12 @@ def generate_hint_node(
     }
     tier_desc = tier_labels.get(min(tier, 2), tier_labels[2])
 
+    problem_desc = problem_id
+    if problem_id == "custom" and state.get("custom_problem"):
+        problem_desc = state.get("custom_problem", {}).get("prompt", "custom problem")
+
     prompt = (
-        f"Problem: {problem_id}\n"
+        f"Problem: {problem_desc}\n"
         f"Code:\n{state.get('code')}\n"
         f"Failure type: {failure_type}\n"
         f"Hint tier: {tier}\n\n"
@@ -198,3 +230,50 @@ def escalate_check_node(state: TriageState) -> dict[str, Any]:
         "hint_tier": current_tier + 1,
         "attempt_count": current_attempts + 1,
     }
+
+
+def synthesize_problem_from_prompt(prompt_text: str, llm_invoke: Any = None) -> dict[str, Any]:
+    """Use Bedrock to synthesize starter code, entrypoint, and test cases from a raw problem prompt."""
+    if llm_invoke is None:
+        llm_invoke = bedrock_client.invoke
+
+    instructions = (
+        "You are an expert algorithm challenge author. Given the following programming problem description, "
+        "synthesize a Python challenge configuration formatted as valid JSON ONLY.\n\n"
+        "Return a JSON object with exactly these keys:\n"
+        "- title: Short title string\n"
+        "- entrypoint: The Python function name string (e.g. 'rotate_array')\n"
+        "- starter_code: Python function definition stub string with type hints and 'pass'\n"
+        "- test_cases: Array of 5 to 7 test objects, each with 'input' (tuple of arguments if multi-arg, or single value) and 'expected_output'\n\n"
+        f"Problem Description:\n{prompt_text}\n\n"
+        "Output ONLY the JSON object, no Markdown code blocks or explanation."
+    )
+
+    raw = llm_invoke(instructions).strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+
+    try:
+        parsed = json.loads(raw)
+        return {
+            "problem_id": "custom",
+            "title": parsed.get("title", "Custom Problem"),
+            "prompt": prompt_text,
+            "entrypoint": parsed.get("entrypoint", "solution"),
+            "starter_code": parsed.get("starter_code", "def solution():\n    pass\n"),
+            "test_cases": parsed.get("test_cases", []),
+        }
+    except Exception as e:
+        # Fallback default
+        return {
+            "problem_id": "custom",
+            "title": "Custom Problem",
+            "prompt": prompt_text,
+            "entrypoint": "solution",
+            "starter_code": "def solution(input_data):\n    # Write your solution here\n    pass\n",
+            "test_cases": [],
+            "error": f"Failed to parse AI test generation: {e}",
+        }
