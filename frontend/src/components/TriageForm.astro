@@ -634,7 +634,7 @@ import { PROBLEMS } from "../lib/problems";
 
 <script>
   import { PROBLEMS } from "../lib/problems";
-  import { submitTriage, synthesizeProblem, type TriageResponse } from "../lib/api";
+  import { submitTriage, synthesizeProblem, synthesizeLocalProblem, type TriageResponse } from "../lib/api";
 
   // Safe UUID generator supporting non-secure HTTP (S3 website) & HTTPS
   function generateUUID(): string {
@@ -1008,7 +1008,20 @@ Output: 3`,
 
   btnLoadStarter.addEventListener("click", () => {
     if (currentProblemId === "custom") {
-      codeEditor.value = customProblemData?.starter_code || "def solution(data):\n    # Write your solution here\n    pass\n";
+      const currentPrompt = customPromptInput.value.trim();
+      if (!customProblemData || (currentPrompt && customProblemData.rawText !== currentPrompt)) {
+        if (currentPrompt) {
+          const synth = synthesizeLocalProblem(currentPrompt);
+          synth.rawText = currentPrompt;
+          customProblemData = synth;
+          renderTestVectorsPreview(synth);
+        }
+      }
+      if (customProblemData?.starter_code) {
+        codeEditor.value = customProblemData.starter_code;
+      } else {
+        codeEditor.value = "def solution(data):\n    # Write your solution here\n    pass\n";
+      }
     } else {
       const problem = PROBLEMS[currentProblemId];
       if (problem) {
