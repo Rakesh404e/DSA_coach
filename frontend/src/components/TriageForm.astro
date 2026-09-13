@@ -636,8 +636,20 @@ import { PROBLEMS } from "../lib/problems";
   import { PROBLEMS } from "../lib/problems";
   import { submitTriage, synthesizeProblem, type TriageResponse } from "../lib/api";
 
+  // Safe UUID generator supporting non-secure HTTP (S3 website) & HTTPS
+  function generateUUID(): string {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   // Client-side Application State
-  let currentSessionId = crypto.randomUUID();
+  let currentSessionId = generateUUID();
   let currentProblemId = "two_sum";
   let currentHintTier = 0;
   let attemptCount = 0;
@@ -1056,7 +1068,7 @@ Output: 3`,
   });
 
   btnResetSession.addEventListener("click", () => {
-    currentSessionId = crypto.randomUUID();
+    currentSessionId = generateUUID();
     currentHintTier = 0;
     attemptCount = 0;
     lastResponse = null;
@@ -1083,7 +1095,8 @@ Output: 3`,
 
   btnCopyHint.addEventListener("click", () => {
     if (lastResponse && lastResponse.hint_text) {
-      navigator.clipboard.writeText(lastResponse.hint_text).then(() => {
+      const textToCopy = lastResponse.hint_text;
+      const onCopied = () => {
         btnCopyHint.textContent = "Copied!";
         setTimeout(() => {
           btnCopyHint.innerHTML = `
@@ -1094,9 +1107,27 @@ Output: 3`,
             Copy
           `;
         }, 1500);
-      });
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(onCopied).catch(() => fallbackCopy(textToCopy, onCopied));
+      } else {
+        fallbackCopy(textToCopy, onCopied);
+      }
     }
   });
+
+  function fallbackCopy(text: string, cb: () => void) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch {}
+    document.body.removeChild(ta);
+    cb();
+  }
 
   if (btnApplyPatch) {
     btnApplyPatch.addEventListener("click", () => {
