@@ -12,6 +12,10 @@ An intelligent, serverless algorithmic coaching system that diagnoses why code f
 
 Built for the **AWS Builder Center Weekend Challenge: Deploy Your First App on AWS**.
 
+> [!TIP]
+> **🚀 Live AWS Demo**: [http://dsa-coach-frontend-299276269116.s3-website-us-east-1.amazonaws.com/](http://dsa-coach-frontend-299276269116.s3-website-us-east-1.amazonaws.com/)  
+> **⚡ Live Serverless API**: `https://w9stlwpuh9.execute-api.us-east-1.amazonaws.com/Prod/triage`
+
 ---
 
 ## Key Features

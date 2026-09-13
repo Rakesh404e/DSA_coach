@@ -3,8 +3,8 @@
 > **AWS Builder Center Weekend Challenge Submission**  
 > *Track: Deploy Your First App on AWS*  
 > *Author: Rakesh*  
-> *Live Demo: [CloudFront / Live Endpoint URL]*  
-> *GitHub Repository: [GitHub Link]*
+> *Live Demo: [http://dsa-coach-frontend-299276269116.s3-website-us-east-1.amazonaws.com/](http://dsa-coach-frontend-299276269116.s3-website-us-east-1.amazonaws.com/)*  
+> *GitHub Repository: [https://github.com/Rakesh404e/DSA_coach](https://github.com/Rakesh404e/DSA_coach)*
 
 ---
 
